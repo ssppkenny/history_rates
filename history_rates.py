@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from collections import namedtuple
 from concurrent.futures import ProcessPoolExecutor
+from multiprocessing.pool import ThreadPool
 
 plt.style.use('fivethirtyeight')
 plt.rcParams['figure.figsize'] = [20, 20]
@@ -58,16 +59,18 @@ class FxtopRate:
     
     def get_rates(self):
         selection = self._selection
-        pool = ProcessPoolExecutor(4)
+        pool = ThreadPool(4)
         reqs = []
         for i in range(self._years,0, -1):
-            req = pool.submit(self._data_from_selection, selection)
+            req = pool.apply_async(self._data_from_selection, args=(selection,))
             reqs.append(req)
             selection = self._next_selection(selection)
-            
+        
+        pool.close()
+        pool.join()
         df = pd.DataFrame()
         for req in reqs:
-            df = pd.concat([df, req.result()])
+            df = pd.concat([df, req.get()])
              
         return df
     
